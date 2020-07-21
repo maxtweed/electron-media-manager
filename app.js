@@ -12,6 +12,34 @@ let streaming = false;
 let data = null; // Photo img src
 const extension = 'png'; // Extensions of image file
 
+function start(e) {
+  const audioInputSelect = document.querySelector('select#audioSource');
+  const videoSelect = document.querySelector('select#videoSource');  
+  const audioMute = document.querySelector('input#audioMute');
+  if (window.stream) {
+    window.stream.getTracks().forEach(function(track) {   
+      if(track.kind === 'audio') {
+        console.log('setAudioState:' + !audioMute.checked);
+        track.enabled = !audioMute.checked;
+      }
+      console.log(e.currentTarget.id + ' = ' + track.kind);
+      if (''.concat(e.currentTarget.id).startsWith(track.kind)) {
+        track.stop();
+      }
+    });
+  }
+  const audioSource = audioInputSelect.value;
+  const videoSource = videoSelect.value;
+  const constraints = {
+    audio: {deviceId: audioSource ? {exact: audioSource} : undefined},
+    video: {deviceId: videoSource ? {exact: videoSource} : undefined}
+  };
+  navigator.mediaDevices.getUserMedia(constraints)
+    .then(gotStream)
+    .then(gotDevices)
+    .catch(handleError);
+}
+
 function gotDevices(deviceInfos) {
   // Handles being called several times to update labels. Preserve values.
   let audioInputSelect = document.querySelector('select#audioSource');
@@ -53,6 +81,21 @@ function gotDevices(deviceInfos) {
   });
 }
 
+function gotStream(stream) {
+  let videoElement = document.querySelector('video');
+  window.stream = stream; // make stream available to console
+  setAudioState();
+
+  if (URL) {
+    videoElement.src = URL.createObjectURL(stream);
+  } else {
+    videoElement.srcObject = stream;
+  }  
+  // Refresh button list in case labels have become available
+  return navigator.mediaDevices.enumerateDevices();
+}
+
+
 // Attach audio output device to video element using device/sink ID.
 function attachSinkId(element, sinkId) {
   if (typeof element.sinkId !== 'undefined') {
@@ -79,20 +122,6 @@ function changeAudioDestination() {
   attachSinkId(videoElement, audioDestination);
 }
 
-function gotStream(stream) {
-  let videoElement = document.querySelector('video');
-  window.stream = stream; // make stream available to console
-  setAudioState();
-
-  if (URL) {
-    videoElement.src = URL.createObjectURL(stream);
-  } else {
-    videoElement.srcObject = stream;
-  }  
-  // Refresh button list in case labels have become available
-  return navigator.mediaDevices.enumerateDevices();
-}
-
 function setAudioState() {
   const audioMute = document.querySelector('input#audioMute');
   if (window.stream) {
@@ -103,32 +132,6 @@ function setAudioState() {
       }
     });
   }
-}
-
-function start(e) {
-  const audioInputSelect = document.querySelector('select#audioSource');
-  const videoSelect = document.querySelector('select#videoSource');  
-  const audioMute = document.querySelector('input#audioMute');
-  if (window.stream) {
-    window.stream.getTracks().forEach(function(track) {   
-      if(track.kind === 'audio') {
-        console.log('setAudioState:' + !audioMute.checked);
-        track.enabled = !audioMute.checked;
-      }
-      console.log(e.currentTarget.id + ' = ' + track.kind);
-      if (''.concat(e.currentTarget.id).startsWith(track.kind)) {
-        track.stop();
-      }
-    });
-  }
-  const audioSource = audioInputSelect.value;
-  const videoSource = videoSelect.value;
-  const constraints = {
-    audio: {deviceId: audioSource ? {exact: audioSource} : undefined},
-    video: {deviceId: videoSource ? {exact: videoSource} : undefined}
-  };
-  navigator.mediaDevices.getUserMedia(constraints).
-      then(gotStream).then(gotDevices).catch(handleError);
 }
 
 function handleError(error) {
